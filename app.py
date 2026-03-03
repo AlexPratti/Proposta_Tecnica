@@ -54,25 +54,31 @@ def gerar_docx(template_path, dados):
     return buffer
 
 
+from fpdf import FPDF
+from io import BytesIO
+
 def gerar_pdf(dados):
     """
-    Gera um PDF simples com os dados informados.
+    Gera um PDF simples e retorna como BytesIO.
     """
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
     pdf.set_font("Arial", size=12)
 
-    pdf.multi_cell(0, 8, f"Proposta Comercial Técnica\n", align="C")
+    pdf.cell(0, 10, "Proposta Comercial Técnica", ln=True, align="C")
     pdf.ln(5)
 
     for chave, valor in dados.items():
         pdf.multi_cell(0, 8, f"{chave.replace('_', ' ').title()}: {valor}")
         pdf.ln(2)
 
-    buffer = BytesIO()
-    pdf.output(buffer)
+    # 🔥 AQUI ESTÁ A CORREÇÃO
+    pdf_output = pdf.output(dest="S").encode("latin-1")
+
+    buffer = BytesIO(pdf_output)
     buffer.seek(0)
+
     return buffer
 
 
