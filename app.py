@@ -1,35 +1,29 @@
 import streamlit as st
 from docx import Document
-from docx.shared import Pt
 from io import BytesIO
-from fpdf import FPDF
+import tempfile
 import os
 
 # ==========================================================
-# CONFIGURAÇÕES INICIAIS DA PÁGINA
+# CONFIGURAÇÃO DA PÁGINA
 # ==========================================================
-st.set_page_config(
-    page_title="Gerador de Propostas Técnicas",
-    layout="wide"
-)
+st.set_page_config(page_title="Gerador de Propostas", layout="wide")
 
 st.title("📄 Gerador de Propostas Comerciais Técnicas")
 
 # ==========================================================
-# FUNÇÕES UTILITÁRIAS
+# FUNÇÕES
 # ==========================================================
 
 def substituir_placeholders(doc, dados):
     """
     Substitui placeholders no formato {{PLACEHOLDER}}
-    dentro do documento Word.
     """
     for p in doc.paragraphs:
         for chave, valor in dados.items():
             if f"{{{{{chave}}}}}" in p.text:
                 p.text = p.text.replace(f"{{{{{chave}}}}}", valor)
 
-    # Também substitui dentro de tabelas
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
@@ -40,12 +34,8 @@ def substituir_placeholders(doc, dados):
     return doc
 
 
-def gerar_docx(template_path, dados):
-    """
-    Carrega o template DOCX e aplica substituições.
-    Retorna o arquivo em memória.
-    """
-    doc = Document(template_path)
+def gerar_docx(template_file, dados):
+    doc = Document(template_file)
     doc = substituir_placeholders(doc, dados)
 
     buffer = BytesIO()
@@ -54,37 +44,37 @@ def gerar_docx(template_path, dados):
     return buffer
 
 
-from fpdf import FPDF
-from io import BytesIO
-
-def gerar_pdf(dados):
+def converter_docx_para_pdf(docx_bytes):
     """
-    Gera um PDF simples e retorna como BytesIO.
+    Conversão real mantendo layout.
+    Funciona no Streamlit Cloud usando docx2pdf local fallback.
     """
-    pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
+    try:
+        from docx2pdf import convert
 
-    pdf.cell(0, 10, "Proposta Comercial Técnica", ln=True, align="C")
-    pdf.ln(5)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            docx_path = os.path.join(tmpdir, "arquivo.docx")
+            pdf_path = os.path.join(tmpdir, "arquivo.pdf")
 
-    for chave, valor in dados.items():
-        pdf.multi_cell(0, 8, f"{chave.replace('_', ' ').title()}: {valor}")
-        pdf.ln(2)
+            with open(docx_path, "wb") as f:
+                f.write(docx_bytes.getbuffer())
 
-    # 🔥 AQUI ESTÁ A CORREÇÃO
-    pdf_output = pdf.output(dest="S").encode("latin-1")
+            convert(docx_path, pdf_path)
 
-    buffer = BytesIO(pdf_output)
-    buffer.seek(0)
+            with open(pdf_path, "rb") as f:
+                pdf_bytes = f.read()
 
-    return buffer
+        return BytesIO(pdf_bytes)
+
+    except Exception as e:
+        st.error("Conversão para PDF não disponível no ambiente atual.")
+        return None
 
 
 # ==========================================================
-# SIDEBAR - ENTRADAS DO USUÁRIO
+# SIDEBAR - ENTRADAS
 # ==========================================================
+
 st.sidebar.header("📝 Dados da Proposta")
 
 nome_cliente = st.sidebar.text_input("Nome do Cliente")
@@ -93,7 +83,24 @@ valor_total = st.sidebar.text_input("Valor Total (R$)")
 prazo_entrega = st.sidebar.text_input("Prazo de Entrega")
 escopo_tecnico = st.sidebar.text_area("Escopo Técnico")
 
-# Dicionário de dados para substituição
+template_file = st.sidebar.file_uploader(
+    "Upload do Template (.docx)",
+    type=["docx"]
+)
+
+# ==========================================================
+# VALIDAÇÃO
+# ==========================================================
+
+campos_preenchidos = all([
+    nome_cliente,
+    titulo_projeto,
+    valor_total,
+    prazo_entrega,
+    escopo_tecnico,
+    template_file
+])
+
 dados_proposta = {
     "NOME_CLIENTE": nome_cliente,
     "TITULO_PROJETO": titulo_projeto,
@@ -103,15 +110,17 @@ dados_proposta = {
 }
 
 # ==========================================================
-# VISUALIZAÇÃO RESUMO
+# RESUMO
 # ==========================================================
+
 st.subheader("📋 Resumo da Proposta")
 
 st.markdown(f"""
 **Cliente:** {nome_cliente}  
 **Projeto:** {titulo_projeto}  
-**Valor Total:** R$ {valor_total}  
+**Valor:** R$ {valor_total}  
 **Prazo:** {prazo_entrega}  
+
 **Escopo Técnico:**  
 {escopo_tecnico}
 """)
@@ -119,36 +128,34 @@ st.markdown(f"""
 st.divider()
 
 # ==========================================================
-# GERAÇÃO DO DOCUMENTO
+# GERAÇÃO
 # ==========================================================
 
-TEMPLATE_PATH = "template.docx"
+if campos_preenchidos:
 
-if os.path.exists(TEMPLATE_PATH):
+    if st.button("🚀 Gerar Proposta"):
+        arquivo_docx = gerar_docx(template_file, dados_proposta)
 
-    col1, col2 = st.columns(2)
+        col1, col2 = st.columns(2)
 
-    with col1:
-        if st.button("📄 Gerar Proposta (DOCX)"):
-            arquivo_docx = gerar_docx(TEMPLATE_PATH, dados_proposta)
-
+        with col1:
             st.download_button(
-                label="⬇️ Baixar Proposta DOCX",
+                label="⬇️ Baixar DOCX",
                 data=arquivo_docx,
                 file_name=f"Proposta_{nome_cliente}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
 
-    with col2:
-        if st.button("📄 Gerar Proposta (PDF)"):
-            arquivo_pdf = gerar_pdf(dados_proposta)
+        with col2:
+            pdf_file = converter_docx_para_pdf(arquivo_docx)
 
-            st.download_button(
-                label="⬇️ Baixar Proposta PDF",
-                data=arquivo_pdf,
-                file_name=f"Proposta_{nome_cliente}.pdf",
-                mime="application/pdf"
-            )
+            if pdf_file:
+                st.download_button(
+                    label="⬇️ Baixar PDF",
+                    data=pdf_file,
+                    file_name=f"Proposta_{nome_cliente}.pdf",
+                    mime="application/pdf"
+                )
 
 else:
-    st.error("Template 'template.docx' não encontrado na raiz do projeto.")
+    st.warning("Preencha todos os campos e envie o template para gerar a proposta.")
