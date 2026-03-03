@@ -1,1 +1,9 @@
+Proposta Comercial Técnica
 
+Cliente: {{NOME_CLIENTE}}
+Projeto: {{TITULO_PROJETO}}
+Valor Total: {{VALOR_TOTAL}}
+Prazo de Entrega: {{PRAZO_ENTREGA}}
+
+Escopo Técnico:
+{{ESCOPO_TECNICO}}
