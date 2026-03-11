@@ -1,5 +1,6 @@
 import streamlit as st
 from docx import Document
+from docx.shared import Inches
 from io import BytesIO
 import tempfile
 import os
@@ -8,6 +9,9 @@ import os
 # CONFIGURAÇÃO DA PÁGINA
 # ==========================================================
 st.set_page_config(page_title="Gerador de Propostas", layout="wide")
+
+# Exibir logo da empresa contratada no topo da interface
+st.image("logo.png", width=200)  # certifique-se que logo.png está na pasta do projeto
 
 st.title("📄 Gerador de Propostas Comerciais Técnicas")
 
@@ -20,9 +24,14 @@ def substituir_placeholders(doc, dados):
     Substitui placeholders no formato {{PLACEHOLDER}}
     """
     for p in doc.paragraphs:
-        for chave, valor in dados.items():
-            if f"{{{{{chave}}}}}" in p.text:
-                p.text = p.text.replace(f"{{{{{chave}}}}}", valor)
+        if "{{LOGO}}" in p.text:
+            p.clear()  # remove texto do placeholder
+            run = p.add_run()
+            run.add_picture("logo.png", width=Inches(2))
+        else:
+            for chave, valor in dados.items():
+                if f"{{{{{chave}}}}}" in p.text:
+                    p.text = p.text.replace(f"{{{{{chave}}}}}", valor)
 
     for table in doc.tables:
         for row in table.rows:
@@ -74,7 +83,6 @@ def converter_docx_para_pdf(docx_bytes):
 # ==========================================================
 # SIDEBAR - ENTRADAS
 # ==========================================================
-
 st.sidebar.header("📝 Dados da Proposta")
 
 nome_cliente = st.sidebar.text_input("Nome do Cliente")
@@ -91,7 +99,6 @@ template_file = st.sidebar.file_uploader(
 # ==========================================================
 # VALIDAÇÃO
 # ==========================================================
-
 campos_preenchidos = all([
     nome_cliente,
     titulo_projeto,
@@ -112,7 +119,6 @@ dados_proposta = {
 # ==========================================================
 # RESUMO
 # ==========================================================
-
 st.subheader("📋 Resumo da Proposta")
 
 st.markdown(f"""
@@ -130,9 +136,7 @@ st.divider()
 # ==========================================================
 # GERAÇÃO
 # ==========================================================
-
 if campos_preenchidos:
-
     if st.button("🚀 Gerar Proposta"):
         arquivo_docx = gerar_docx(template_file, dados_proposta)
 
@@ -156,6 +160,5 @@ if campos_preenchidos:
                     file_name=f"Proposta_{nome_cliente}.pdf",
                     mime="application/pdf"
                 )
-
 else:
     st.warning("Preencha todos os campos e envie o template para gerar a proposta.")
