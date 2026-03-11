@@ -11,7 +11,7 @@ import os
 st.set_page_config(page_title="Gerador de Propostas", layout="wide")
 
 # Exibir logo da empresa contratada no topo da interface
-st.image("logo.png", width=200)  # certifique-se que logo.png está na pasta do projeto
+st.image("LOGO DGCE.png", width=200)  # logo fixa no projeto
 
 st.title("📄 Gerador de Propostas Comerciais Técnicas")
 
@@ -27,7 +27,7 @@ def substituir_placeholders(doc, dados):
         if "{{LOGO}}" in p.text:
             p.clear()  # remove texto do placeholder
             run = p.add_run()
-            run.add_picture("logo.png", width=Inches(2))
+            run.add_picture("LOGO DGCE.png", width=Inches(2))
         else:
             for chave, valor in dados.items():
                 if f"{{{{{chave}}}}}" in p.text:
@@ -162,3 +162,4 @@ if campos_preenchidos:
                 )
 else:
     st.warning("Preencha todos os campos e envie o template para gerar a proposta.")
+
