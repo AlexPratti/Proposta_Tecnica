@@ -15,37 +15,29 @@ st.title("📄 Gerador de Propostas Comerciais Técnicas")
 # ==========================================================
 
 def substituir_placeholders(doc, dados, tabela_itens):
+    # percorre parágrafos fora de tabelas
     for p in doc.paragraphs:
         if "{{LOGO}}" in p.text:
             p.text = ""
             run = p.add_run()
             run.add_picture("LOGO DGCE.png", width=Inches(2))
-
         elif "{{TABELA}}" in p.text:
-            p.text = ""  # remove o placeholder
+            p.text = ""
             if tabela_itens:
-                # cria a tabela com bordas visíveis
                 table = doc.add_table(rows=1, cols=3)
                 table.style = "Table Grid"
-
-                # cabeçalho
                 hdr_cells = table.rows[0].cells
                 headers = ["Item", "Incluído", "Não Incluído"]
                 for i, h in enumerate(headers):
                     run = hdr_cells[i].paragraphs[0].add_run(h)
                     run.font.bold = True
                     run.font.size = Pt(12)
-
-                # linhas
                 for item in tabela_itens:
                     row_cells = table.add_row().cells
                     row_cells[0].text = item["Item"]
                     row_cells[1].text = item["Incluso"]
                     row_cells[2].text = item["Nao_Incluso"]
-
-                # insere a tabela no lugar do parágrafo
                 p._element.addnext(table._element)
-
         else:
             for chave, valor in dados.items():
                 if f"{{{{{chave}}}}}" in p.text:
@@ -55,6 +47,16 @@ def substituir_placeholders(doc, dados, tabela_itens):
                         p.text = p.text.replace(f"{{{{{chave}}}}}", "\n".join(itens))
                     else:
                         p.text = p.text.replace(f"{{{{{chave}}}}}", valor)
+
+    # percorre tabelas e substitui placeholders dentro das células
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    for chave, valor in dados.items():
+                        if f"{{{{{chave}}}}}" in p.text:
+                            p.text = p.text.replace(f"{{{{{chave}}}}}", valor)
+
     return doc
 
 
