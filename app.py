@@ -28,42 +28,26 @@ def substituir_placeholders(doc, dados, tabela_itens):
         # Tabela dinâmica no lugar certo
         elif "{{TABELA}}" in p.text:
             p.text = ""  # remove o placeholder
-
             if tabela_itens:
-                # cria elemento de tabela XML
-                tbl = OxmlElement('w:tbl')
+                # cria a tabela com bordas visíveis
+                table = doc.add_table(rows=1, cols=3)
+                table.style = "Table Grid"   # ← bordas desenhadas
 
-                # cabeçalho
-                tr = OxmlElement('w:tr')
-                for h in ["Item", "Incluído", "Não Incluído"]:
-                    tc = OxmlElement('w:tc')
-                    p_tc = OxmlElement('w:p')
-                    r = OxmlElement('w:r')
-                    t = OxmlElement('w:t')
-                    t.text = h
-                    r.append(t)
-                    p_tc.append(r)
-                    tc.append(p_tc)
-                    tr.append(tc)
-                tbl.append(tr)
+                hdr_cells = table.rows[0].cells
+                headers = ["Item", "Incluído", "Não Incluído"]
+                for i, h in enumerate(headers):
+                    run = hdr_cells[i].paragraphs[0].add_run(h)
+                    run.font.bold = True
+                    run.font.size = Pt(12)
 
-                # linhas da tabela
                 for item in tabela_itens:
-                    tr = OxmlElement('w:tr')
-                    for val in [item["Item"], item["Incluso"], item["Nao_Incluso"]]:
-                        tc = OxmlElement('w:tc')
-                        p_tc = OxmlElement('w:p')
-                        r = OxmlElement('w:r')
-                        t = OxmlElement('w:t')
-                        t.text = val
-                        r.append(t)
-                        p_tc.append(r)
-                        tc.append(p_tc)
-                        tr.append(tc)
-                    tbl.append(tr)
+                    row_cells = table.add_row().cells
+                    row_cells[0].text = item["Item"]
+                    row_cells[1].text = item["Incluso"]
+                    row_cells[2].text = item["Nao_Incluso"]
 
                 # insere a tabela logo após o parágrafo
-                p._element.addnext(tbl)
+                p._element.addnext(table._element)
 
         # Listas e textos simples
         else:
@@ -76,6 +60,7 @@ def substituir_placeholders(doc, dados, tabela_itens):
                     else:
                         p.text = p.text.replace(f"{{{{{chave}}}}}", valor)
     return doc
+
 
 
 
