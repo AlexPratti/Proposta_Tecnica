@@ -16,19 +16,19 @@ st.title("📄 Gerador de Propostas Comerciais Técnicas")
 
 def substituir_placeholders(doc, dados, tabela_itens):
     for p in doc.paragraphs:
-        # Logo
         if "{{LOGO}}" in p.text:
             p.text = ""
             run = p.add_run()
             run.add_picture("LOGO DGCE.png", width=Inches(2))
 
-        # Tabela dinâmica no lugar certo
         elif "{{TABELA}}" in p.text:
             p.text = ""  # remove o placeholder
             if tabela_itens:
+                # cria a tabela com bordas visíveis
                 table = doc.add_table(rows=1, cols=3)
-                table.style = "Table Grid"   # bordas visíveis
+                table.style = "Table Grid"
 
+                # cabeçalho
                 hdr_cells = table.rows[0].cells
                 headers = ["Item", "Incluído", "Não Incluído"]
                 for i, h in enumerate(headers):
@@ -36,16 +36,16 @@ def substituir_placeholders(doc, dados, tabela_itens):
                     run.font.bold = True
                     run.font.size = Pt(12)
 
+                # linhas
                 for item in tabela_itens:
                     row_cells = table.add_row().cells
                     row_cells[0].text = item["Item"]
                     row_cells[1].text = item["Incluso"]
                     row_cells[2].text = item["Nao_Incluso"]
 
-                # insere a tabela logo após o parágrafo
+                # insere a tabela no lugar do parágrafo
                 p._element.addnext(table._element)
 
-        # Listas e textos simples
         else:
             for chave, valor in dados.items():
                 if f"{{{{{chave}}}}}" in p.text:
@@ -56,6 +56,7 @@ def substituir_placeholders(doc, dados, tabela_itens):
                     else:
                         p.text = p.text.replace(f"{{{{{chave}}}}}", valor)
     return doc
+
 
 def gerar_docx(dados, tabela_itens, template_file):
     if template_file is not None:
