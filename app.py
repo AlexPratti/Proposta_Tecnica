@@ -15,10 +15,10 @@ st.title("📄 Gerador de Propostas Comerciais Técnicas")
 # ==========================================================
 
 def adicionar_lista(doc, itens):
-    """Adiciona itens como lista com marcadores no documento"""
+    """Adiciona itens um abaixo do outro (sem marcadores)"""
     for item in itens.split(";"):
         if item.strip():
-            doc.add_paragraph(item.strip(), style="List Bullet")
+            doc.add_paragraph(item.strip())
 
 def substituir_placeholders(doc, dados):
     for p in doc.paragraphs:
@@ -32,7 +32,7 @@ def substituir_placeholders(doc, dados):
                     if chave in ["BENEFICIOS","ESCOPO","OBSERVACOES",
                                  "RESPONSABILIDADES_CONTRATADA","RESPONSABILIDADES_CONTRATANTE"]:
                         p.text = p.text.replace(f"{{{{{chave}}}}}", "")
-                        adicionar_lista(doc, valor)  # agora adiciona direto no documento
+                        adicionar_lista(doc, valor)
                     else:
                         p.text = p.text.replace(f"{{{{{chave}}}}}", valor)
     return doc
