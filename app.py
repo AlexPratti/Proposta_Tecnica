@@ -14,56 +14,59 @@ st.title("📄 Gerador de Propostas Comerciais Técnicas")
 # FUNÇÕES AUXILIARES
 # ==========================================================
 
-def adicionar_lista(doc, itens):
-    """Adiciona itens um abaixo do outro (sem marcadores)"""
+def inserir_lista_apos(paragraph, itens):
+    """Insere itens logo abaixo do parágrafo do placeholder"""
+    parent = paragraph._element
     for item in itens.split(";"):
         if item.strip():
-            doc.add_paragraph(item.strip())
+            new_p = paragraph._element.addnext(paragraph._element.__class__())
+            new_para = paragraph._parent.add_paragraph(item.strip())
+            parent.addnext(new_para._element)
 
-def substituir_placeholders(doc, dados):
+def substituir_placeholders(doc, dados, tabela_itens):
     for p in doc.paragraphs:
+        # Logo
         if "{{LOGO}}" in p.text:
-            p.clear()
+            p.text = ""
             run = p.add_run()
             run.add_picture("LOGO DGCE.png", width=Inches(2))
+
+        # Tabela
+        elif "{{TABELA}}" in p.text:
+            p.text = ""
+            if tabela_itens:
+                table = doc.add_table(rows=1, cols=3)
+                hdr_cells = table.rows[0].cells
+                headers = ["Item", "Incluso", "Não_Incluso"]
+                for i, h in enumerate(headers):
+                    run = hdr_cells[i].paragraphs[0].add_run(h)
+                    run.font.color.rgb = RGBColor(255,255,255)
+                    run.font.bold = True
+                    run.font.size = Pt(12)
+                for item in tabela_itens:
+                    row_cells = table.add_row().cells
+                    row_cells[0].text = item["Item"]
+                    row_cells[1].text = item["Incluso"]
+                    row_cells[2].text = item["Nao_Incluso"]
+
+        # Listas
         else:
             for chave, valor in dados.items():
                 if f"{{{{{chave}}}}}" in p.text:
                     if chave in ["BENEFICIOS","ESCOPO","OBSERVACOES",
                                  "RESPONSABILIDADES_CONTRATADA","RESPONSABILIDADES_CONTRATANTE"]:
                         p.text = p.text.replace(f"{{{{{chave}}}}}", "")
-                        adicionar_lista(doc, valor)
+                        inserir_lista_apos(p, valor)
                     else:
                         p.text = p.text.replace(f"{{{{{chave}}}}}", valor)
     return doc
-
-def gerar_tabela(doc, itens):
-    """Cria tabela dinâmica com cabeçalho formatado"""
-    if not itens:
-        return
-    table = doc.add_table(rows=1, cols=3)
-    hdr_cells = table.rows[0].cells
-    headers = ["Item", "Incluso", "Não_Incluso"]
-
-    for i, h in enumerate(headers):
-        run = hdr_cells[i].paragraphs[0].add_run(h)
-        run.font.color.rgb = RGBColor(255,255,255)  # letras brancas
-        run.font.bold = True
-        run.font.size = Pt(12)
-
-    for item in itens:
-        row_cells = table.add_row().cells
-        row_cells[0].text = item["Item"]
-        row_cells[1].text = item["Incluso"]
-        row_cells[2].text = item["Nao_Incluso"]
 
 def gerar_docx(dados, tabela_itens, template_file):
     if template_file is not None:
         doc = Document(template_file)
     else:
-        doc = Document("Template Proposta.docx")  # fallback padrão
-    doc = substituir_placeholders(doc, dados)
-    gerar_tabela(doc, tabela_itens)
+        doc = Document("Template Proposta.docx")
+    doc = substituir_placeholders(doc, dados, tabela_itens)
 
     buffer = BytesIO()
     doc.save(buffer)
