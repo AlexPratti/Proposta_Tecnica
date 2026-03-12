@@ -22,12 +22,12 @@ def substituir_placeholders(doc, dados, tabela_itens):
             run = p.add_run()
             run.add_picture("LOGO DGCE.png", width=Inches(2))
 
-        # Tabela dinâmica no lugar certo
+        # Tabela dinâmica
         elif "{{TABELA}}" in p.text:
             p.text = ""  # remove o placeholder
             if tabela_itens:
-                # insere a tabela logo após o parágrafo
-                table = p.insert_paragraph_after().insert_table(rows=1, cols=3)
+                # cria a tabela no documento (ela aparece no lugar do parágrafo vazio)
+                table = doc.add_table(rows=1, cols=3)
                 hdr_cells = table.rows[0].cells
                 headers = ["Item", "Incluído", "Não Incluído"]
                 for i, h in enumerate(headers):
@@ -52,6 +52,7 @@ def substituir_placeholders(doc, dados, tabela_itens):
                     else:
                         p.text = p.text.replace(f"{{{{{chave}}}}}", valor)
     return doc
+
 
 
 def gerar_docx(dados, tabela_itens, template_file):
