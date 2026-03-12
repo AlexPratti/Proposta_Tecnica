@@ -14,15 +14,6 @@ st.title("📄 Gerador de Propostas Comerciais Técnicas")
 # FUNÇÕES AUXILIARES
 # ==========================================================
 
-def inserir_lista_apos(paragraph, itens):
-    """Insere itens logo abaixo do parágrafo do placeholder"""
-    parent = paragraph._element
-    for item in itens.split(";"):
-        if item.strip():
-            new_p = paragraph._element.addnext(paragraph._element.__class__())
-            new_para = paragraph._parent.add_paragraph(item.strip())
-            parent.addnext(new_para._element)
-
 def substituir_placeholders(doc, dados, tabela_itens):
     for p in doc.paragraphs:
         # Logo
@@ -31,13 +22,13 @@ def substituir_placeholders(doc, dados, tabela_itens):
             run = p.add_run()
             run.add_picture("LOGO DGCE.png", width=Inches(2))
 
-        # Tabela
+        # Tabela dinâmica
         elif "{{TABELA}}" in p.text:
             p.text = ""
             if tabela_itens:
                 table = doc.add_table(rows=1, cols=3)
                 hdr_cells = table.rows[0].cells
-                headers = ["Item", "Incluso", "Não_Incluso"]
+                headers = ["Item", "Incluído", "Não Incluído"]
                 for i, h in enumerate(headers):
                     run = hdr_cells[i].paragraphs[0].add_run(h)
                     run.font.color.rgb = RGBColor(255,255,255)
@@ -49,14 +40,14 @@ def substituir_placeholders(doc, dados, tabela_itens):
                     row_cells[1].text = item["Incluso"]
                     row_cells[2].text = item["Nao_Incluso"]
 
-        # Listas
+        # Listas e textos simples
         else:
             for chave, valor in dados.items():
                 if f"{{{{{chave}}}}}" in p.text:
                     if chave in ["BENEFICIOS","ESCOPO","OBSERVACOES",
                                  "RESPONSABILIDADES_CONTRATADA","RESPONSABILIDADES_CONTRATANTE"]:
-                        p.text = p.text.replace(f"{{{{{chave}}}}}", "")
-                        inserir_lista_apos(p, valor)
+                        itens = [i.strip() for i in valor.split(";") if i.strip()]
+                        p.text = p.text.replace(f"{{{{{chave}}}}}", "\n".join(itens))
                     else:
                         p.text = p.text.replace(f"{{{{{chave}}}}}", valor)
     return doc
@@ -65,7 +56,7 @@ def gerar_docx(dados, tabela_itens, template_file):
     if template_file is not None:
         doc = Document(template_file)
     else:
-        doc = Document("Template Proposta.docx")
+        doc = Document("PROJETOS.docx")  # usa o modelo padrão
     doc = substituir_placeholders(doc, dados, tabela_itens)
 
     buffer = BytesIO()
