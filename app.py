@@ -1,6 +1,6 @@
 import streamlit as st
 from docx import Document
-from docx.shared import Inches, Pt, RGBColor
+from docx.shared import Inches, Pt, RGBColor, Cm
 from io import BytesIO
 import datetime
 
@@ -14,9 +14,6 @@ st.title("📄 Gerador de Propostas Comerciais Técnicas")
 # FUNÇÕES AUXILIARES
 # ==========================================================
 
-from docx.oxml import OxmlElement
-from docx.oxml.ns import qn
-
 def substituir_placeholders(doc, dados, tabela_itens):
     for p in doc.paragraphs:
         # Logo
@@ -29,9 +26,8 @@ def substituir_placeholders(doc, dados, tabela_itens):
         elif "{{TABELA}}" in p.text:
             p.text = ""  # remove o placeholder
             if tabela_itens:
-                # cria a tabela com bordas visíveis
                 table = doc.add_table(rows=1, cols=3)
-                table.style = "Table Grid"   # ← bordas desenhadas
+                table.style = "Table Grid"   # bordas visíveis
 
                 hdr_cells = table.rows[0].cells
                 headers = ["Item", "Incluído", "Não Incluído"]
@@ -61,15 +57,19 @@ def substituir_placeholders(doc, dados, tabela_itens):
                         p.text = p.text.replace(f"{{{{{chave}}}}}", valor)
     return doc
 
-
-
-
-
 def gerar_docx(dados, tabela_itens, template_file):
     if template_file is not None:
         doc = Document(template_file)
     else:
-        doc = Document("PROJETOS.docx")  # usa o modelo padrão
+        doc = Document("PROJETOS.docx")
+
+    # Define margens da página (2,5 cm de cada lado)
+    section = doc.sections[0]
+    section.left_margin = Cm(2.5)
+    section.right_margin = Cm(2.5)
+    section.top_margin = Cm(2.5)
+    section.bottom_margin = Cm(2.5)
+
     doc = substituir_placeholders(doc, dados, tabela_itens)
 
     buffer = BytesIO()
