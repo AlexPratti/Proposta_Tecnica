@@ -50,7 +50,6 @@ def gerar_tabela(doc, itens):
         run.font.color.rgb = RGBColor(255,255,255)  # letras brancas
         run.font.bold = True
         run.font.size = Pt(12)
-        # ⚠️ removido o trecho que tentava aplicar fundo azul
 
     for item in itens:
         row_cells = table.add_row().cells
@@ -58,9 +57,11 @@ def gerar_tabela(doc, itens):
         row_cells[1].text = item["Incluso"]
         row_cells[2].text = item["Nao_Incluso"]
 
-
-def gerar_docx(dados, tabela_itens):
-    doc = Document("Template Proposta.docx")
+def gerar_docx(dados, tabela_itens, template_file):
+    if template_file is not None:
+        doc = Document(template_file)
+    else:
+        doc = Document("Template Proposta.docx")  # fallback padrão
     doc = substituir_placeholders(doc, dados)
     gerar_tabela(doc, tabela_itens)
 
@@ -91,6 +92,13 @@ observacoes = st.sidebar.text_area("Observações (separe por ;)")
 respons_contratada = st.sidebar.text_area("Responsabilidades da Contratada (separe por ;)")
 respons_contratante = st.sidebar.text_area("Responsabilidades da Contratante (separe por ;)")
 texto_conclusao = st.sidebar.text_area("Texto de Conclusão")
+
+# Upload do template
+st.sidebar.subheader("📂 Upload do Template")
+template_file = st.sidebar.file_uploader(
+    "Carregue o modelo (.docx)",
+    type=["docx"]
+)
 
 # Tabela dinâmica
 st.sidebar.subheader("Tabela de Inclusões")
@@ -130,7 +138,7 @@ campos_obrigatorios = all([nome_cliente, titulo_projeto, valor_total, prazo_entr
 
 if campos_obrigatorios:
     if st.button("🚀 Gerar Proposta"):
-        arquivo_docx = gerar_docx(dados_proposta, tabela_itens)
+        arquivo_docx = gerar_docx(dados_proposta, tabela_itens, template_file)
         st.download_button(
             label="⬇️ Baixar DOCX",
             data=arquivo_docx,
@@ -139,4 +147,5 @@ if campos_obrigatorios:
         )
 else:
     st.warning("Preencha os campos obrigatórios (Cliente, Projeto, Valor, Prazo, Escopo Técnico) para gerar a proposta.")
+
 
