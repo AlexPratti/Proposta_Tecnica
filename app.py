@@ -14,6 +14,9 @@ st.title("📄 Gerador de Propostas Comerciais Técnicas")
 # FUNÇÕES AUXILIARES
 # ==========================================================
 
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+
 def substituir_placeholders(doc, dados, tabela_itens):
     for p in doc.paragraphs:
         # Logo
@@ -22,24 +25,45 @@ def substituir_placeholders(doc, dados, tabela_itens):
             run = p.add_run()
             run.add_picture("LOGO DGCE.png", width=Inches(2))
 
-        # Tabela dinâmica
+        # Tabela dinâmica no lugar certo
         elif "{{TABELA}}" in p.text:
             p.text = ""  # remove o placeholder
+
             if tabela_itens:
-                # cria a tabela no documento (ela aparece no lugar do parágrafo vazio)
-                table = doc.add_table(rows=1, cols=3)
-                hdr_cells = table.rows[0].cells
-                headers = ["Item", "Incluído", "Não Incluído"]
-                for i, h in enumerate(headers):
-                    run = hdr_cells[i].paragraphs[0].add_run(h)
-                    run.font.color.rgb = RGBColor(255,255,255)
-                    run.font.bold = True
-                    run.font.size = Pt(12)
+                # cria elemento de tabela XML
+                tbl = OxmlElement('w:tbl')
+
+                # cabeçalho
+                tr = OxmlElement('w:tr')
+                for h in ["Item", "Incluído", "Não Incluído"]:
+                    tc = OxmlElement('w:tc')
+                    p_tc = OxmlElement('w:p')
+                    r = OxmlElement('w:r')
+                    t = OxmlElement('w:t')
+                    t.text = h
+                    r.append(t)
+                    p_tc.append(r)
+                    tc.append(p_tc)
+                    tr.append(tc)
+                tbl.append(tr)
+
+                # linhas da tabela
                 for item in tabela_itens:
-                    row_cells = table.add_row().cells
-                    row_cells[0].text = item["Item"]
-                    row_cells[1].text = item["Incluso"]
-                    row_cells[2].text = item["Nao_Incluso"]
+                    tr = OxmlElement('w:tr')
+                    for val in [item["Item"], item["Incluso"], item["Nao_Incluso"]]:
+                        tc = OxmlElement('w:tc')
+                        p_tc = OxmlElement('w:p')
+                        r = OxmlElement('w:r')
+                        t = OxmlElement('w:t')
+                        t.text = val
+                        r.append(t)
+                        p_tc.append(r)
+                        tc.append(p_tc)
+                        tr.append(tc)
+                    tbl.append(tr)
+
+                # insere a tabela logo após o parágrafo
+                p._element.addnext(tbl)
 
         # Listas e textos simples
         else:
@@ -52,6 +76,7 @@ def substituir_placeholders(doc, dados, tabela_itens):
                     else:
                         p.text = p.text.replace(f"{{{{{chave}}}}}", valor)
     return doc
+
 
 
 
