@@ -1,165 +1,145 @@
 import streamlit as st
 from docx import Document
-from docx.shared import Inches
+from docx.shared import Inches, Pt, RGBColor
 from io import BytesIO
-import tempfile
-import os
+import datetime
 
-# ==========================================================
-# CONFIGURAÇÃO DA PÁGINA
-# ==========================================================
 st.set_page_config(page_title="Gerador de Propostas", layout="wide")
 
-# Exibir logo da empresa contratada no topo da interface
-st.image("LOGO DGCE.png", width=200)  # logo fixa no projeto
-
+# Logo fixa
+st.image("LOGO DGCE.png", width=200)
 st.title("📄 Gerador de Propostas Comerciais Técnicas")
 
 # ==========================================================
-# FUNÇÕES
+# FUNÇÕES AUXILIARES
 # ==========================================================
 
+def adicionar_lista(paragraph, itens):
+    """Adiciona itens como lista com marcadores"""
+    for item in itens.split(";"):
+        if item.strip():
+            paragraph.add_paragraph(item.strip(), style="List Bullet")
+
 def substituir_placeholders(doc, dados):
-    """
-    Substitui placeholders no formato {{PLACEHOLDER}}
-    """
     for p in doc.paragraphs:
         if "{{LOGO}}" in p.text:
-            p.clear()  # remove texto do placeholder
+            p.clear()
             run = p.add_run()
             run.add_picture("LOGO DGCE.png", width=Inches(2))
         else:
             for chave, valor in dados.items():
                 if f"{{{{{chave}}}}}" in p.text:
-                    p.text = p.text.replace(f"{{{{{chave}}}}}", valor)
-
-    for table in doc.tables:
-        for row in table.rows:
-            for cell in row.cells:
-                for chave, valor in dados.items():
-                    if f"{{{{{chave}}}}}" in cell.text:
-                        cell.text = cell.text.replace(f"{{{{{chave}}}}}", valor)
-
+                    if chave in ["BENEFICIOS","ESCOPO","OBSERVACOES",
+                                 "RESPONSABILIDADES_CONTRATADA","RESPONSABILIDADES_CONTRATANTE"]:
+                        p.text = p.text.replace(f"{{{{{chave}}}}}", "")
+                        adicionar_lista(p, valor)
+                    else:
+                        p.text = p.text.replace(f"{{{{{chave}}}}}", valor)
     return doc
 
+def gerar_tabela(doc, itens):
+    """Cria tabela dinâmica com fundo azul escuro e letras brancas"""
+    if not itens:
+        return
+    table = doc.add_table(rows=1, cols=3)
+    hdr_cells = table.rows[0].cells
+    headers = ["Item", "Incluso", "Não_Incluso"]
 
-def gerar_docx(template_file, dados):
-    doc = Document(template_file)
+    for i, h in enumerate(headers):
+        run = hdr_cells[i].paragraphs[0].add_run(h)
+        run.font.color.rgb = RGBColor(255,255,255)
+        run.font.bold = True
+        run.font.size = Pt(12)
+        shading = hdr_cells[i]._element.xpath(".//w:shd")
+        if shading:
+            shading[0].set("w:fill", "000080")  # azul escuro
+        else:
+            hdr_cells[i]._element.get_or_add_shd().set("w:fill", "000080")
+
+    for item in itens:
+        row_cells = table.add_row().cells
+        row_cells[0].text = item["Item"]
+        row_cells[1].text = item["Incluso"]
+        row_cells[2].text = item["Nao_Incluso"]
+
+def gerar_docx(dados, tabela_itens):
+    doc = Document("Template Proposta.docx")
     doc = substituir_placeholders(doc, dados)
+    gerar_tabela(doc, tabela_itens)
 
     buffer = BytesIO()
     doc.save(buffer)
     buffer.seek(0)
     return buffer
 
-
-def converter_docx_para_pdf(docx_bytes):
-    """
-    Conversão real mantendo layout.
-    Funciona no Streamlit Cloud usando docx2pdf local fallback.
-    """
-    try:
-        from docx2pdf import convert
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            docx_path = os.path.join(tmpdir, "arquivo.docx")
-            pdf_path = os.path.join(tmpdir, "arquivo.pdf")
-
-            with open(docx_path, "wb") as f:
-                f.write(docx_bytes.getbuffer())
-
-            convert(docx_path, pdf_path)
-
-            with open(pdf_path, "rb") as f:
-                pdf_bytes = f.read()
-
-        return BytesIO(pdf_bytes)
-
-    except Exception as e:
-        st.error("Conversão para PDF não disponível no ambiente atual.")
-        return None
-
-
 # ==========================================================
 # SIDEBAR - ENTRADAS
 # ==========================================================
 st.sidebar.header("📝 Dados da Proposta")
 
+# Campos obrigatórios
 nome_cliente = st.sidebar.text_input("Nome do Cliente")
 titulo_projeto = st.sidebar.text_input("Título do Projeto")
 valor_total = st.sidebar.text_input("Valor Total (R$)")
 prazo_entrega = st.sidebar.text_input("Prazo de Entrega")
 escopo_tecnico = st.sidebar.text_area("Escopo Técnico")
 
-template_file = st.sidebar.file_uploader(
-    "Upload do Template (.docx)",
-    type=["docx"]
-)
+# Campos opcionais
+ano = st.sidebar.text_input("Ano")
+objetivo = st.sidebar.text_area("Objetivo")
+beneficios = st.sidebar.text_area("Benefícios (separe por ;)")
+referencias = st.sidebar.text_area("Referências")
+escopo = st.sidebar.text_area("Escopo (separe por ;)")
+observacoes = st.sidebar.text_area("Observações (separe por ;)")
+respons_contratada = st.sidebar.text_area("Responsabilidades da Contratada (separe por ;)")
+respons_contratante = st.sidebar.text_area("Responsabilidades da Contratante (separe por ;)")
+texto_conclusao = st.sidebar.text_area("Texto de Conclusão")
 
-# ==========================================================
-# VALIDAÇÃO
-# ==========================================================
-campos_preenchidos = all([
-    nome_cliente,
-    titulo_projeto,
-    valor_total,
-    prazo_entrega,
-    escopo_tecnico,
-    template_file
-])
+# Tabela dinâmica
+st.sidebar.subheader("Tabela de Inclusões")
+num_itens = st.sidebar.number_input("Quantidade de itens", min_value=0, step=1)
+tabela_itens = []
+for i in range(num_itens):
+    item = st.sidebar.text_input(f"Item {i+1}")
+    incluso = st.sidebar.text_input(f"Incluso {i+1}")
+    nao_incluso = st.sidebar.text_input(f"Não Incluso {i+1}")
+    tabela_itens.append({"Item": item, "Incluso": incluso, "Nao_Incluso": nao_incluso})
+
+# Data completa
+data_completa = datetime.datetime.now().strftime("%d/%m/%Y")
 
 dados_proposta = {
     "NOME_CLIENTE": nome_cliente,
     "TITULO_PROJETO": titulo_projeto,
     "VALOR_TOTAL": valor_total,
     "PRAZO_ENTREGA": prazo_entrega,
-    "ESCOPO_TECNICO": escopo_tecnico
+    "ESCOPO_TECNICO": escopo_tecnico,
+    "ANO": ano,
+    "OBJETIVO": objetivo,
+    "BENEFICIOS": beneficios,
+    "REFERÊNCIAS": referencias,
+    "ESCOPO": escopo,
+    "OBSERVACOES": observacoes,
+    "RESPONSABILIDADES_CONTRATADA": respons_contratada,
+    "RESPONSABILIDADES_CONTRATANTE": respons_contratante,
+    "TEXTO_CONCLUSAO": texto_conclusao,
+    "DATA_COMPLETA": data_completa
 }
-
-# ==========================================================
-# RESUMO
-# ==========================================================
-st.subheader("📋 Resumo da Proposta")
-
-st.markdown(f"""
-**Cliente:** {nome_cliente}  
-**Projeto:** {titulo_projeto}  
-**Valor:** R$ {valor_total}  
-**Prazo:** {prazo_entrega}  
-
-**Escopo Técnico:**  
-{escopo_tecnico}
-""")
-
-st.divider()
 
 # ==========================================================
 # GERAÇÃO
 # ==========================================================
-if campos_preenchidos:
+campos_obrigatorios = all([nome_cliente, titulo_projeto, valor_total, prazo_entrega, escopo_tecnico])
+
+if campos_obrigatorios:
     if st.button("🚀 Gerar Proposta"):
-        arquivo_docx = gerar_docx(template_file, dados_proposta)
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.download_button(
-                label="⬇️ Baixar DOCX",
-                data=arquivo_docx,
-                file_name=f"Proposta_{nome_cliente}.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
-
-        with col2:
-            pdf_file = converter_docx_para_pdf(arquivo_docx)
-
-            if pdf_file:
-                st.download_button(
-                    label="⬇️ Baixar PDF",
-                    data=pdf_file,
-                    file_name=f"Proposta_{nome_cliente}.pdf",
-                    mime="application/pdf"
-                )
+        arquivo_docx = gerar_docx(dados_proposta, tabela_itens)
+        st.download_button(
+            label="⬇️ Baixar DOCX",
+            data=arquivo_docx,
+            file_name=f"Proposta_{nome_cliente}.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
 else:
-    st.warning("Preencha todos os campos e envie o template para gerar a proposta.")
+    st.warning("Preencha os campos obrigatórios (Cliente, Projeto, Valor, Prazo, Escopo Técnico) para gerar a proposta.")
 
