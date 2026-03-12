@@ -14,11 +14,11 @@ st.title("📄 Gerador de Propostas Comerciais Técnicas")
 # FUNÇÕES AUXILIARES
 # ==========================================================
 
-def adicionar_lista(paragraph, itens):
-    """Adiciona itens como lista com marcadores"""
+def adicionar_lista(doc, itens):
+    """Adiciona itens como lista com marcadores no documento"""
     for item in itens.split(";"):
         if item.strip():
-            paragraph.add_paragraph(item.strip(), style="List Bullet")
+            doc.add_paragraph(item.strip(), style="List Bullet")
 
 def substituir_placeholders(doc, dados):
     for p in doc.paragraphs:
@@ -32,7 +32,7 @@ def substituir_placeholders(doc, dados):
                     if chave in ["BENEFICIOS","ESCOPO","OBSERVACOES",
                                  "RESPONSABILIDADES_CONTRATADA","RESPONSABILIDADES_CONTRATANTE"]:
                         p.text = p.text.replace(f"{{{{{chave}}}}}", "")
-                        adicionar_lista(p, valor)
+                        adicionar_lista(doc, valor)  # agora adiciona direto no documento
                     else:
                         p.text = p.text.replace(f"{{{{{chave}}}}}", valor)
     return doc
@@ -147,5 +147,3 @@ if campos_obrigatorios:
         )
 else:
     st.warning("Preencha os campos obrigatórios (Cliente, Projeto, Valor, Prazo, Escopo Técnico) para gerar a proposta.")
-
-
