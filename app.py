@@ -38,7 +38,7 @@ def substituir_placeholders(doc, dados):
     return doc
 
 def gerar_tabela(doc, itens):
-    """Cria tabela dinâmica com fundo azul escuro e letras brancas"""
+    """Cria tabela dinâmica com cabeçalho formatado"""
     if not itens:
         return
     table = doc.add_table(rows=1, cols=3)
@@ -47,20 +47,17 @@ def gerar_tabela(doc, itens):
 
     for i, h in enumerate(headers):
         run = hdr_cells[i].paragraphs[0].add_run(h)
-        run.font.color.rgb = RGBColor(255,255,255)
+        run.font.color.rgb = RGBColor(255,255,255)  # letras brancas
         run.font.bold = True
         run.font.size = Pt(12)
-        shading = hdr_cells[i]._element.xpath(".//w:shd")
-        if shading:
-            shading[0].set("w:fill", "000080")  # azul escuro
-        else:
-            hdr_cells[i]._element.get_or_add_shd().set("w:fill", "000080")
+        # ⚠️ removido o trecho que tentava aplicar fundo azul
 
     for item in itens:
         row_cells = table.add_row().cells
         row_cells[0].text = item["Item"]
         row_cells[1].text = item["Incluso"]
         row_cells[2].text = item["Nao_Incluso"]
+
 
 def gerar_docx(dados, tabela_itens):
     doc = Document("Template Proposta.docx")
